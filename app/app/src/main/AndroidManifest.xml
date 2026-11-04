@@ -1,0 +1,24 @@
+&lt;manifest xmlns:android="http://schemas.android.com/apk/res/android"&gt;
+    &lt;uses-permission android:name="android.permission.NFC" /&gt;
+    &lt;uses-feature
+        android:name="android.hardware.nfc"
+        android:required="true" /&gt;
+
+    &lt;application
+        android:allowBackup="false"
+        android:label="Qom Card Reader"
+        android:theme="@style/AppTheme"&gt;
+
+        &lt;activity
+            android:name=".MainActivity"
+            android:exported="true"&gt;
+
+            &lt;intent-filter&gt;
+                &lt;action android:name="android.intent.action.MAIN" /&gt;
+                &lt;category android:name="android.intent.category.LAUNCHER" /&gt;
+            &lt;/intent-filter&gt;
+
+        &lt;/activity&gt;
+    &lt;/application&gt;
+&lt;/manifest&gt;
+
