@@ -1,8 +1,10 @@
+
 package com.example.qomcardreader
 
 import android.app.Activity
 import android.nfc.NfcAdapter
 import android.nfc.Tag
+import android.nfc.tech.MifareClassic
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -25,6 +27,7 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
     private lateinit var typeText: TextView
     private lateinit var techText: TextView
     private lateinit var balanceText: TextView
+    private lateinit var memoryText: TextView
 
     private var lastCardUid: String? = null
 
@@ -75,10 +78,7 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
             setTextColor(Color.rgb(21, 101, 192))
             gravity = Gravity.CENTER
             setPadding(dp(12), dp(18), dp(12), dp(18))
-            background = roundedBox(
-                Color.rgb(232, 241, 252),
-                16
-            )
+            background = roundedBox(Color.rgb(232, 241, 252), 16)
         }
 
         root.addView(statusText, matchWidth())
@@ -86,21 +86,26 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
         addSectionTitle(root, "اطلاعات کارت")
 
         uidText = addInfoCard(
-            root,
-            "شناسه کارت (UID)",
+            root, "شناسه کارت (UID)",
             "هنوز کارتی شناسایی نشده است"
         )
 
         typeText = addInfoCard(
-            root,
-            "نوع کارت",
+            root, "نوع کارت",
             "در انتظار شناسایی"
         )
 
         techText = addInfoCard(
-            root,
-            "فناوری‌های کارت",
+            root, "فناوری‌های کارت",
             "در انتظار شناسایی"
+        )
+
+        addSectionTitle(root, "اطلاعات حافظه و سکتورها")
+
+        memoryText = addInfoCard(
+            root,
+            "مشخصات حافظه",
+            "منتظر اسکن کارت"
         )
 
         addSectionTitle(root, "موجودی کارت")
@@ -114,10 +119,7 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
             background = roundedBox(Color.WHITE, 16)
         }
 
-        root.addView(
-            balanceText,
-            matchWidth()
-        )
+        root.addView(balanceText, matchWidth())
 
         val balanceButton = Button(this).apply {
             text = "نمایش موجودی"
@@ -132,7 +134,7 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
         root.addView(balanceButton, buttonParams)
 
         val note = TextView(this).apply {
-            text = "توجه: نمایش موجودی واقعی به اتصال رسمی به سامانه صادرکننده کارت نیاز دارد."
+            text = "توجه: موجودی واقعی هنوز از طریق این نسخه قابل دریافت نیست."
             textSize = 12f
             setTextColor(Color.GRAY)
             gravity = Gravity.CENTER
@@ -201,7 +203,6 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
         color: Int,
         radius: Int
     ): GradientDrawable {
-
         return GradientDrawable().apply {
             setColor(color)
             cornerRadius = dp(radius).toFloat()
@@ -220,7 +221,6 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
     }
 
     private fun updateNfcStatus() {
-
         when {
             nfcAdapter == null ->
                 statusText.text = "این گوشی NFC ندارد."
@@ -249,12 +249,7 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
             NfcAdapter.FLAG_READER_NFC_V or
             NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS
 
-        adapter.enableReaderMode(
-            this,
-            this,
-            flags,
-            null
-        )
+        adapter.enableReaderMode(this, this, flags, null)
     }
 
     override fun onPause() {
@@ -273,17 +268,54 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
         }.distinct()
 
         val cardType = when {
-            techs.any { it == "MifareClassic" } ->
+            techs.contains("MifareClassic") ->
                 "MIFARE Classic"
 
-            techs.any { it == "MifareUltralight" } ->
+            techs.contains("MifareUltralight") ->
                 "MIFARE Ultralight"
 
-            techs.any { it == "IsoDep" } ->
+            techs.contains("IsoDep") ->
                 "ISO-DEP"
 
             else ->
                 "کارت NFC؛ نوع دقیق مشخص نیست"
+        }
+
+        var memoryInfo = "این کارت MIFARE Classic شناسایی نشد."
+
+        val mifare = MifareClassic.get(tag)
+
+        if (mifare != null) {
+            try {
+                mifare.connect()
+
+                memoryInfo = """
+                    نوع حافظه: ${when (mifare.type) {
+                        MifareClassic.TYPE_CLASSIC -> "Classic"
+                        MifareClassic.TYPE_PLUS -> "Plus"
+                        MifareClassic.TYPE_PRO -> "Pro"
+                        else -> "نامشخص"
+                    }}
+
+                    ظرفیت حافظه: ${mifare.size} بایت
+                    تعداد سکتورها: ${mifare.sectorCount}
+                    تعداد بلوک‌ها: ${mifare.blockCount}
+                    اندازه هر بلوک: ${MifareClassic.BLOCK_SIZE} بایت
+                    وضعیت ارتباط: موفق
+                """.trimIndent()
+
+            } catch (e: Exception) {
+
+                memoryInfo =
+                    "کارت شناسایی شد، اما خواندن مشخصات حافظه ممکن نشد.\n" +
+                    "خطا: ${e.message ?: "نامشخص"}"
+
+            } finally {
+                try {
+                    mifare.close()
+                } catch (_: Exception) {
+                }
+            }
         }
 
         runOnUiThread {
@@ -295,6 +327,7 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
             uidText.text = uid
             typeText.text = cardType
             techText.text = techs.joinToString("، ")
+            memoryText.text = memoryInfo
 
             balanceText.text =
                 "موجودی واقعی هنوز قابل دریافت نیست."
@@ -304,7 +337,6 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
     private fun showBalanceStatus() {
 
         if (lastCardUid == null) {
-
             Toast.makeText(
                 this,
                 "ابتدا کارت را اسکن کن.",
@@ -315,6 +347,6 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
         }
 
         balanceText.text =
-            "برای دریافت موجودی واقعی، اتصال رسمی به سامانه قم‌کارت لازم است."
+            "برای دریافت موجودی واقعی، به اطلاعات و دسترسی رسمی سامانه صادرکننده نیاز داریم."
     }
 }
