@@ -26,9 +26,9 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
     private lateinit var uidText: TextView
     private lateinit var typeText: TextView
     private lateinit var techText: TextView
-    private lateinit var balanceText: TextView
     private lateinit var memoryText: TextView
-    private lateinit var sectorText: TextView
+    private lateinit var balanceText: TextView
+    private lateinit var blockText: TextView
 
     private var lastCardUid: String? = null
 
@@ -60,17 +60,15 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
             typeface = Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
         }
-
         root.addView(title, matchWidth())
 
         val subtitle = TextView(this).apply {
-            text = "سامانه شناسایی و بررسی کارت"
+            text = "بررسی اطلاعات کارت NFC"
             textSize = 14f
             setTextColor(Color.GRAY)
             gravity = Gravity.CENTER
             setPadding(0, dp(6), 0, dp(24))
         }
-
         root.addView(subtitle, matchWidth())
 
         statusText = TextView(this).apply {
@@ -81,79 +79,65 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
             setPadding(dp(12), dp(18), dp(12), dp(18))
             background = roundedBox(Color.rgb(232, 241, 252), 16)
         }
-
         root.addView(statusText, matchWidth())
 
         addSectionTitle(root, "اطلاعات کارت")
 
         uidText = addInfoCard(
-            root, "شناسه کارت (UID)",
-            "هنوز کارتی شناسایی نشده است"
+            root, "شناسه کارت (UID)", "در انتظار اسکن"
         )
 
         typeText = addInfoCard(
-            root, "نوع کارت",
-            "در انتظار شناسایی"
+            root, "نوع کارت", "در انتظار اسکن"
         )
 
         techText = addInfoCard(
-            root, "فناوری‌های کارت",
-            "در انتظار شناسایی"
+            root, "فناوری کارت", "در انتظار اسکن"
         )
 
-        addSectionTitle(root, "اطلاعات حافظه")
+        addSectionTitle(root, "مشخصات حافظه")
 
         memoryText = addInfoCard(
-            root, "مشخصات حافظه",
-            "منتظر اسکن کارت"
+            root, "اطلاعات حافظه", "منتظر اسکن کارت"
         )
 
-        addSectionTitle(root, "گزارش سکتورها")
+        addSectionTitle(root, "خواندن بلوک‌های حافظه")
 
-        sectorText = TextView(this).apply {
-            text = "پس از شناسایی کارت، وضعیت ۱۶ سکتور نمایش داده می‌شود."
-            textSize = 14f
-            setTextColor(Color.DKGRAY)
-            setPadding(dp(16), dp(16), dp(16), dp(16))
-            background = roundedBox(Color.WHITE, 16)
-            textDirection = View.TEXT_DIRECTION_RTL
+        val scanButton = Button(this).apply {
+            text = "آماده اسکن کارت"
+            isEnabled = false
         }
+        root.addView(scanButton, matchWidth())
 
-        root.addView(sectorText, matchWidth())
+        blockText = TextView(this).apply {
+            text = "برای شروع، کارت را پشت گوشی قرار بده."
+            textSize = 13f
+            setTextColor(Color.DKGRAY)
+            setPadding(dp(14), dp(16), dp(14), dp(16))
+            background = roundedBox(Color.WHITE, 16)
+            textDirection = View.TEXT_DIRECTION_LTR
+        }
+        root.addView(blockText, matchWidth())
 
-        addSectionTitle(root, "موجودی کارت")
+        addSectionTitle(root, "وضعیت موجودی")
 
         balanceText = TextView(this).apply {
-            text = "برای بررسی موجودی، ابتدا کارت را اسکن کن."
+            text = "موجودی واقعی هنوز مشخص نشده است."
             textSize = 15f
-            setTextColor(Color.DKGRAY)
             gravity = Gravity.CENTER
+            setTextColor(Color.DKGRAY)
             setPadding(dp(16), dp(20), dp(16), dp(20))
             background = roundedBox(Color.WHITE, 16)
         }
-
         root.addView(balanceText, matchWidth())
 
-        val balanceButton = Button(this).apply {
-            text = "نمایش وضعیت موجودی"
-            textSize = 16f
-            setOnClickListener {
-                showBalanceStatus()
-            }
-        }
-
-        val buttonParams = matchWidth()
-        buttonParams.topMargin = dp(14)
-        root.addView(balanceButton, buttonParams)
-
         val note = TextView(this).apply {
-            text = "این نسخه فقط اطلاعات شناسایی و مشخصات حافظه را بررسی می‌کند؛ هیچ تغییری روی کارت انجام نمی‌دهد."
+            text = "این نسخه فقط خواندن را امتحان می‌کند. هیچ کلیدی حدس زده نمی‌شود و هیچ اطلاعاتی روی کارت نوشته یا پاک نمی‌شود."
             textSize = 12f
             setTextColor(Color.GRAY)
             gravity = Gravity.CENTER
             setPadding(dp(8), dp(24), dp(8), dp(8))
         }
-
         root.addView(note, matchWidth())
 
         setContentView(scroll)
@@ -170,7 +154,6 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
             setTextColor(Color.rgb(25, 55, 85))
             setPadding(0, dp(24), 0, dp(12))
         }
-
         root.addView(text, matchWidth())
     }
 
@@ -206,7 +189,6 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
 
         val params = matchWidth()
         params.bottomMargin = dp(10)
-
         root.addView(card, params)
 
         return result
@@ -257,9 +239,6 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
 
         val flags =
             NfcAdapter.FLAG_READER_NFC_A or
-            NfcAdapter.FLAG_READER_NFC_B or
-            NfcAdapter.FLAG_READER_NFC_F or
-            NfcAdapter.FLAG_READER_NFC_V or
             NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS
 
         adapter.enableReaderMode(this, this, flags, null)
@@ -291,41 +270,80 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
                 "ISO-DEP"
 
             else ->
-                "کارت NFC؛ نوع دقیق مشخص نیست"
+                "کارت NFC؛ نوع دقیق نامشخص"
         }
 
-        var memoryInfo =
-            "این کارت MIFARE Classic شناسایی نشد."
-
-        var sectorCount = 0
+        var memoryInfo = "MIFARE Classic شناسایی نشد."
+        var blockReport = "اطلاعات بلوک‌ها موجود نیست."
 
         val mifare = MifareClassic.get(tag)
 
         if (mifare != null) {
+
             try {
                 mifare.connect()
 
-                sectorCount = mifare.sectorCount
-
                 memoryInfo = """
-                    نوع حافظه: ${when (mifare.type) {
-                        MifareClassic.TYPE_CLASSIC -> "Classic"
-                        MifareClassic.TYPE_PLUS -> "Plus"
-                        MifareClassic.TYPE_PRO -> "Pro"
-                        else -> "نامشخص"
-                    }}
-
-                    ظرفیت حافظه: ${mifare.size} بایت
+                    نوع حافظه: Classic
+                    ظرفیت: ${mifare.size} بایت
                     تعداد سکتورها: ${mifare.sectorCount}
                     تعداد بلوک‌ها: ${mifare.blockCount}
                     اندازه هر بلوک: ${MifareClassic.BLOCK_SIZE} بایت
-                    وضعیت ارتباط: موفق
+                    ارتباط: موفق
                 """.trimIndent()
+
+                val report = StringBuilder()
+
+                var successCount = 0
+                var failedCount = 0
+
+                for (block in 0 until mifare.blockCount) {
+
+                    val blockInSector = block % 4
+
+                    // بلوک چهارم هر سکتور، اطلاعات امنیتی دارد.
+                    // در این نسخه آن را نمی‌خوانیم.
+                    if (blockInSector == 3) {
+                        continue
+                    }
+
+                    report.append("بلوک ")
+                        .append(block)
+                        .append(": ")
+
+                    try {
+                        // هیچ احراز هویتی انجام نمی‌شود.
+                        // فقط خواندن معمولی امتحان می‌شود.
+                        val data = mifare.readBlock(block)
+
+                        val hex = data.joinToString(" ") {
+                            "%02X".format(it.toInt() and 0xFF)
+                        }
+
+                        report.append(hex)
+                        report.append("\n")
+
+                        successCount++
+
+                    } catch (e: Exception) {
+
+                        report.append("خواندن ناموفق")
+                        report.append("\n")
+
+                        failedCount++
+                    }
+                }
+
+                blockReport =
+                    "نتیجه خواندن بدون احراز هویت\n" +
+                    "خواندن موفق: $successCount\n" +
+                    "خواندن ناموفق: $failedCount\n\n" +
+                    report.toString()
 
             } catch (e: Exception) {
 
                 memoryInfo =
-                    "خطا در دریافت مشخصات حافظه:\n" +
+                    "خطا در ارتباط با کارت:\n" +
                     (e.message ?: "نامشخص")
 
             } finally {
@@ -336,46 +354,20 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
             }
         }
 
-        val report = if (sectorCount > 0) {
-            (0 until sectorCount).joinToString("\n\n") { sector ->
-                "سکتور ${sector + 1}\n" +
-                "وضعیت: بررسی‌نشده\n" +
-                "دسترسی: نیازمند کلید معتبر و مجاز"
-            }
-        } else {
-            "اطلاعات سکتورها در دسترس نیست."
-        }
-
         runOnUiThread {
 
             lastCardUid = uid
 
-            statusText.text = "کارت با موفقیت شناسایی شد."
+            statusText.text = "اسکن کارت پایان یافت."
 
             uidText.text = uid
             typeText.text = cardType
             techText.text = techs.joinToString("، ")
             memoryText.text = memoryInfo
-            sectorText.text = report
+            blockText.text = blockReport
 
             balanceText.text =
-                "موجودی واقعی هنوز قابل دریافت نیست."
+                "موجودی واقعی هنوز از داده‌های خوانده‌شده قابل تشخیص نیست."
         }
-    }
-
-    private fun showBalanceStatus() {
-
-        if (lastCardUid == null) {
-            Toast.makeText(
-                this,
-                "ابتدا کارت را اسکن کن.",
-                Toast.LENGTH_SHORT
-            ).show()
-
-            return
-        }
-
-        balanceText.text =
-            "برای دریافت موجودی واقعی، به روش دسترسی رسمی صادرکننده کارت نیاز داریم."
     }
 }
