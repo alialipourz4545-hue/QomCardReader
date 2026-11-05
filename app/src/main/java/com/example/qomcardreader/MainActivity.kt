@@ -28,6 +28,7 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
     private lateinit var techText: TextView
     private lateinit var balanceText: TextView
     private lateinit var memoryText: TextView
+    private lateinit var sectorText: TextView
 
     private var lastCardUid: String? = null
 
@@ -63,7 +64,7 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
         root.addView(title, matchWidth())
 
         val subtitle = TextView(this).apply {
-            text = "سامانه شناسایی کارت"
+            text = "سامانه شناسایی و بررسی کارت"
             textSize = 14f
             setTextColor(Color.GRAY)
             gravity = Gravity.CENTER
@@ -100,13 +101,25 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
             "در انتظار شناسایی"
         )
 
-        addSectionTitle(root, "اطلاعات حافظه و سکتورها")
+        addSectionTitle(root, "اطلاعات حافظه")
 
         memoryText = addInfoCard(
-            root,
-            "مشخصات حافظه",
+            root, "مشخصات حافظه",
             "منتظر اسکن کارت"
         )
+
+        addSectionTitle(root, "گزارش سکتورها")
+
+        sectorText = TextView(this).apply {
+            text = "پس از شناسایی کارت، وضعیت ۱۶ سکتور نمایش داده می‌شود."
+            textSize = 14f
+            setTextColor(Color.DKGRAY)
+            setPadding(dp(16), dp(16), dp(16), dp(16))
+            background = roundedBox(Color.WHITE, 16)
+            textDirection = View.TEXT_DIRECTION_RTL
+        }
+
+        root.addView(sectorText, matchWidth())
 
         addSectionTitle(root, "موجودی کارت")
 
@@ -122,7 +135,7 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
         root.addView(balanceText, matchWidth())
 
         val balanceButton = Button(this).apply {
-            text = "نمایش موجودی"
+            text = "نمایش وضعیت موجودی"
             textSize = 16f
             setOnClickListener {
                 showBalanceStatus()
@@ -134,7 +147,7 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
         root.addView(balanceButton, buttonParams)
 
         val note = TextView(this).apply {
-            text = "توجه: موجودی واقعی هنوز از طریق این نسخه قابل دریافت نیست."
+            text = "این نسخه فقط اطلاعات شناسایی و مشخصات حافظه را بررسی می‌کند؛ هیچ تغییری روی کارت انجام نمی‌دهد."
             textSize = 12f
             setTextColor(Color.GRAY)
             gravity = Gravity.CENTER
@@ -281,13 +294,18 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
                 "کارت NFC؛ نوع دقیق مشخص نیست"
         }
 
-        var memoryInfo = "این کارت MIFARE Classic شناسایی نشد."
+        var memoryInfo =
+            "این کارت MIFARE Classic شناسایی نشد."
+
+        var sectorCount = 0
 
         val mifare = MifareClassic.get(tag)
 
         if (mifare != null) {
             try {
                 mifare.connect()
+
+                sectorCount = mifare.sectorCount
 
                 memoryInfo = """
                     نوع حافظه: ${when (mifare.type) {
@@ -307,8 +325,8 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
             } catch (e: Exception) {
 
                 memoryInfo =
-                    "کارت شناسایی شد، اما خواندن مشخصات حافظه ممکن نشد.\n" +
-                    "خطا: ${e.message ?: "نامشخص"}"
+                    "خطا در دریافت مشخصات حافظه:\n" +
+                    (e.message ?: "نامشخص")
 
             } finally {
                 try {
@@ -316,6 +334,16 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
                 } catch (_: Exception) {
                 }
             }
+        }
+
+        val report = if (sectorCount > 0) {
+            (0 until sectorCount).joinToString("\n\n") { sector ->
+                "سکتور ${sector + 1}\n" +
+                "وضعیت: بررسی‌نشده\n" +
+                "دسترسی: نیازمند کلید معتبر و مجاز"
+            }
+        } else {
+            "اطلاعات سکتورها در دسترس نیست."
         }
 
         runOnUiThread {
@@ -328,6 +356,7 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
             typeText.text = cardType
             techText.text = techs.joinToString("، ")
             memoryText.text = memoryInfo
+            sectorText.text = report
 
             balanceText.text =
                 "موجودی واقعی هنوز قابل دریافت نیست."
@@ -347,6 +376,6 @@ class MainActivity : Activity(), NfcAdapter.ReaderCallback {
         }
 
         balanceText.text =
-            "برای دریافت موجودی واقعی، به اطلاعات و دسترسی رسمی سامانه صادرکننده نیاز داریم."
+            "برای دریافت موجودی واقعی، به روش دسترسی رسمی صادرکننده کارت نیاز داریم."
     }
 }
